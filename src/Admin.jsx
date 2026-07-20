@@ -109,12 +109,34 @@ function OrdersTab({ password }) {
             </div>
             <p className="text-stone-300 text-xs">WA: {order.customer_contact || "-"}</p>
             {order.status === "pending" && (
-              <button
-                onClick={() => markPaid(order.id)}
-                className="self-start bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
-              >
-                Tandai Lunas
-              </button>
+              order.proof_signed_url ? (
+                <div className="flex flex-col gap-1.5">
+                  <a href={order.proof_signed_url} target="_blank" rel="noreferrer">
+                    <img
+                      src={order.proof_signed_url}
+                      alt="Bukti bayar"
+                      className="w-full max-h-56 object-contain rounded-lg border border-stone-700 bg-stone-900"
+                    />
+                  </a>
+                  <p className="text-stone-500 text-[10px]">Cek fotonya dulu, baru tandai lunas kalau nominal & tujuan transfer cocok.</p>
+                  <button
+                    onClick={() => markPaid(order.id)}
+                    className="self-start bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
+                  >
+                    Tandai Lunas
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-amber-400 text-[11px]">Belum ada bukti bayar diupload</p>
+                  <button
+                    onClick={() => markPaid(order.id)}
+                    className="self-start bg-stone-700 text-stone-300 text-xs font-bold px-3 py-1.5 rounded-lg"
+                  >
+                    Tandai Lunas
+                  </button>
+                </div>
+              )
             )}
             {order.order_items.map((item) => (
               <div key={item.id} className="text-sm text-white border-t border-stone-700 pt-2">
