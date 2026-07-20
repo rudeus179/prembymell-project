@@ -1,5 +1,4 @@
-// supabase/functions/admin/index.ts
-// Satu endpoint buat semua aksi admin (dilindungi password, dikirim di tiap request).
+// supabase/functions/create-order/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -7,101 +6,96 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
-const ADMIN_PASSWORD = Deno.env.get("ADMIN_PASSWORD")!;
+
+const MIDTRANS_SERVER_KEY = Deno.env.get("MIDTRANS_SERVER_KEY")!;
+const MIDTRANS_BASE =
+  Deno.env.get("MIDTRANS_IS_PRODUCTION") === "true"
+    ? "https://app.midtrans.com/snap/v1/transactions"
+    : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: CORS_HEADERS });
+  }
 
   try {
-    const body = await req.json();
-    const { password, action, payload } = body;
+    const { cart, contact } = await req.json();
 
-    if (password !== ADMIN_PASSWORD) {
-      return json({ error: "Password salah" }, 401);
+    if (!Array.isArray(cart) || cart.length === 0) {
+      return new Response(JSON.stringify({ error: "Keranjang kosong" }), { status: 400, headers: CORS_HEADERS });
     }
 
-    switch (action) {
-      case "login": {
-        return json({ ok: true });
+    // 1. Cek stok tiap item
+    for (const item of cart) {
+      const { data: stockRow } = await supabase
+        .from("stock")
+        .select("stock_qty")
+        .eq("app_id", item.app_id)
+        .eq("variant_label", item.variant_label)
+        .maybeSingle();
+      if (stockRow && stockRow.stock_qty < item.qty) {
+        return new Response(
+          JSON.stringify({ error: `Stok ${item.app_name} - ${item.variant_label} tidak cukup` }),
+          { status: 400, headers: CORS_HEADERS }
+        );
       }
-
-      case "list_orders": {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*, order_items(*)")
-          .order("created_at", { ascending: false })
-          .limit(100);
-        if (error) return json({ error: error.message }, 500);
-        return json({ orders: data });
-      }
-
-      case "list_stock": {
-        const { data, error } = await supabase.from("stock").select("*").order("app_id");
-        if (error) return json({ error: error.message }, 500);
-        return json({ stock: data });
-      }
-
-      case "upsert_stock": {
-        const { app_id, variant_label, stock_qty } = payload;
-        const { error } = await supabase
-          .from("stock")
-          .upsert({ app_id, variant_label, stock_qty }, { onConflict: "app_id,variant_label" });
-        if (error) return json({ error: error.message }, 500);
-        return json({ ok: true });
-      }
-
-      case "list_credentials": {
-        const { app_id, variant_label } = payload || {};
-        let q = supabase.from("credentials").select("*").order("created_at", { ascending: false }).limit(200);
-        if (app_id) q = q.eq("app_id", app_id);
-        if (variant_label) q = q.eq("variant_label", variant_label);
-        const { data, error } = await q;
-        if (error) return json({ error: error.message }, 500);
-        return json({ credentials: data });
-      }
-
-      case "add_credentials": {
-        // payload: { app_id, variant_label, lines: string[] } - satu baris = satu akun siap kirim
-        const { app_id, variant_label, lines } = payload;
-        if (!Array.isArray(lines) || lines.length === 0) return json({ error: "Isi akun kosong" }, 400);
-        const rows = lines
-          .map((l: string) => l.trim())
-          .filter(Boolean)
-          .map((content: string) => ({ app_id, variant_label, content }));
-        const { error } = await supabase.from("credentials").insert(rows);
-        if (error) return json({ error: error.message }, 500);
-        return json({ ok: true, added: rows.length });
-      }
-
-      case "delete_credential": {
-        const { id } = payload;
-        const { error } = await supabase.from("credentials").delete().eq("id", id).eq("is_used", false);
-        if (error) return json({ error: error.message }, 500);
-        return json({ ok: true });
-      }
-
-      case "mark_delivered": {
-        // Kirim manual (kalau stok kredensial kosong) — admin isi teks lalu tandai terkirim
-        const { order_item_id, content } = payload;
-        const { error } = await supabase.from("order_items").update({ delivered_content: content }).eq("id", order_item_id);
-        if (error) return json({ error: error.message }, 500);
-        return json({ ok: true });
-      }
-
-      default:
-        return json({ error: "Aksi tidak dikenal" }, 400);
     }
+
+    const total = cart.reduce((s: number, i: any) => s + i.price * i.qty, 0);
+    const midtransOrderId = `PMB-${Date.now()}`;
+
+    // 2. Simpan order berstatus pending
+    const { data: order, error } = await supabase
+      .from("orders")
+      .insert({ total_amount: total, midtrans_order_id: midtransOrderId, customer_contact: contact ?? null })
+      .select()
+      .single();
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: CORS_HEADERS });
+
+    await supabase.from("order_items").insert(
+      cart.map((i: any) => ({
+        order_id: order.id,
+        app_id: i.app_id,
+        app_name: i.app_name,
+        variant_label: i.variant_label,
+        price: i.price,
+        qty: i.qty,
+      }))
+    );
+
+    // 3. Minta Snap token ke Midtrans
+    const midtransRes = await fetch(MIDTRANS_BASE, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Basic " + btoa(MIDTRANS_SERVER_KEY + ":"),
+      },
+      body: JSON.stringify({
+        transaction_details: { order_id: midtransOrderId, gross_amount: total },
+        item_details: cart.map((i: any) => ({
+          id: `${i.app_id}-${i.variant_label}`,
+          price: i.price,
+          quantity: i.qty,
+          name: `${i.app_name} - ${i.variant_label}`.slice(0, 50),
+        })),
+      }),
+    });
+    const midtransData = await midtransRes.json();
+    if (!midtransRes.ok) {
+      return new Response(JSON.stringify({ error: midtransData }), { status: 500, headers: CORS_HEADERS });
+    }
+
+    return new Response(
+      JSON.stringify({ order_id: order.id, snap_token: midtransData.token, redirect_url: midtransData.redirect_url }),
+      { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+    );
   } catch (e) {
-    return json({ error: String(e) }, 500);
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: CORS_HEADERS });
   }
 });
