@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Lock, RefreshCw, Send } from "lucide-react";
 
-const SUPABASE_FUNCTIONS_URL = "https://GANTI-DENGAN-PROJECT-REF.functions.supabase.co";
+const SUPABASE_FUNCTIONS_URL = "https://bcuupxqrbczhmhmrwrzv.functions.supabase.co";
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
 const PW_STORAGE_KEY = "pm_admin_pw";
 
