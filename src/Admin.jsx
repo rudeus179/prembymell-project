@@ -2,13 +2,18 @@ import { useState, useEffect } from "react";
 import { Lock, RefreshCw, Send } from "lucide-react";
 
 const SUPABASE_FUNCTIONS_URL = "https://bcuupxqrbczhmhmrwrzv.functions.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_r_CYjAY3OvGaWtXE6B1eWA_xja80Mll";
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
 const PW_STORAGE_KEY = "pm_admin_pw";
 
 async function callAdmin(password, action, payload) {
   const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/admin`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+    },
     body: JSON.stringify({ password, action, payload }),
   });
   const data = await res.json();
