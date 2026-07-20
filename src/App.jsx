@@ -98,7 +98,7 @@ const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
 const WHATSAPP_NUMBER = "6285733335037";
 // Ganti dengan URL project Supabase kamu sendiri, contoh:
 // "https://xxxxxxxxxxxx.functions.supabase.co"
-const SUPABASE_FUNCTIONS_URL = "https://GANTI-DENGAN-PROJECT-REF.functions.supabase.co";
+const SUPABASE_FUNCTIONS_URL = "https://bcuupxqrbczhmhmrwrzv.functions.supabase.co";
 const CONTACT_STORAGE_KEY = "pm_contact";
 const STATUS_LABEL = { pending: "Menunggu Pembayaran", paid: "Lunas", failed: "Gagal / Kedaluwarsa" };
 
