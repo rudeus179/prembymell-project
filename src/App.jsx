@@ -357,7 +357,10 @@ export default function PrembymellApp() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal membuat order");
+      if (!res.ok) {
+        const msg = typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Gagal membuat order";
+        throw new Error(msg);
+      }
 
       const itemLines = cart
         .map((i) => `- ${i.app.name} (${i.variant.label}) x${i.qty} = ${rupiah(i.variant.price * i.qty)}`)
