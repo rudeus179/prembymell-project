@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { ArrowLeft, ShoppingCart, Plus, Minus, Check, MessageCircle, Home, X, Sparkles, Trash2, Search, History, PackageCheck, Clock, XCircle, Copy } from "lucide-react";
+import qrisImage from "./assets/qris.jpg";
 
 const APPS = [
   { id: "apple-music", icon: "applemusic", name: "Apple Music", cat: "Musik", letter: "AM", bg: "bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500", dark: true, ring: "ring-fuchsia-300", chip: "bg-white text-fuchsia-600", tagline: "Jutaan lagu lossless, bebas iklan", variants: [
@@ -93,7 +94,6 @@ const APPS = [
 ];
 
 const CATEGORIES = ["Semua", "Streaming", "Musik", "Editing & Foto", "Produktivitas"];
-const PAYMENT_METHODS = ["ShopeePay", "SeaBank", "BCA", "QRIS", "DANA"];
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
 const WHATSAPP_NUMBER = "6285733335037";
 // Ganti dengan URL project Supabase kamu sendiri, contoh:
@@ -249,6 +249,7 @@ export default function PrembymellApp() {
   const [cart, setCart] = useState([]);
   const [toast, setToast] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
+  const [pendingOrder, setPendingOrder] = useState(null);
   const [contact, setContact] = useState(() => localStorage.getItem(CONTACT_STORAGE_KEY) || "");
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -348,14 +349,27 @@ export default function PrembymellApp() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal membuat order");
-      // Arahkan ke halaman pembayaran Midtrans (Snap)
-      window.location.href = data.redirect_url;
+
+      const itemLines = cart
+        .map((i) => `- ${i.app.name} (${i.variant.label}) x${i.qty} = ${rupiah(i.variant.price * i.qty)}`)
+        .join("\n");
+      setPendingOrder({ order_code: data.order_code, total_amount: data.total_amount, itemLines });
+      setCart([]);
     } catch (e) {
       setToast(typeof e.message === "string" ? e.message : "Gagal checkout, coba lagi");
       setTimeout(() => setToast(""), 2500);
     } finally {
       setCheckingOut(false);
     }
+  }
+
+  function confirmPaid() {
+    if (!pendingOrder) return;
+    const message =
+      `Halo, mau konfirmasi pesanan ${pendingOrder.order_code}\n\n${pendingOrder.itemLines}\n\nTotal: ${rupiah(pendingOrder.total_amount)}\n` +
+      `Saya sudah bayar via QRIS, ini bukti transfernya:`;
+    window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    setPendingOrder(null);
   }
 
   return (
@@ -544,12 +558,11 @@ export default function PrembymellApp() {
                     className="w-full bg-orange-50 border-2 border-orange-100 rounded-lg px-3 py-2 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-pink-300"
                   />
                 </div>
-                <div className="rounded-xl bg-white border-2 border-orange-100 p-4 shadow-sm">
-                  <p className="text-stone-500 text-[11px] mb-2 font-medium">Pembayaran via</p>
-                  <div className="flex flex-wrap gap-2">
-                    {PAYMENT_METHODS.map((m) => (
-                      <span key={m} className="text-[11px] font-bold text-stone-600 bg-orange-100 px-2.5 py-1 rounded-lg">{m}</span>
-                    ))}
+                <div className="rounded-xl bg-white border-2 border-orange-100 p-4 shadow-sm flex items-center gap-3">
+                  <img src={qrisImage} alt="QRIS" className="w-12 h-12 rounded-lg object-cover border border-orange-100" />
+                  <div>
+                    <p className="text-stone-800 text-xs font-bold">Bayar via QRIS</p>
+                    <p className="text-stone-500 text-[11px] font-medium">Kode QR muncul setelah kamu tekan Bayar Sekarang</p>
                   </div>
                 </div>
               </>
@@ -622,6 +635,33 @@ export default function PrembymellApp() {
         {toast && (
           <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-stone-800 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg z-30">
             {toast}
+          </div>
+        )}
+
+        {/* Modal QRIS */}
+        {pendingOrder && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-6">
+            <div className="w-full max-w-xs bg-white rounded-2xl shadow-xl p-5 flex flex-col items-center gap-3 max-h-[90vh] overflow-y-auto">
+              <p className="text-stone-800 font-bold text-base" style={{ fontFamily: "'Baloo 2', sans-serif" }}>Scan QRIS buat Bayar</p>
+              <p className="text-stone-500 text-[11px] font-medium -mt-2">Order {pendingOrder.order_code}</p>
+              <img src={qrisImage} alt="QRIS Pembayaran" className="w-full rounded-xl border-2 border-orange-100" />
+              <div className="w-full flex items-center justify-between bg-orange-50 rounded-lg px-3 py-2">
+                <span className="text-stone-500 text-xs font-medium">Total Bayar</span>
+                <span className="text-stone-800 font-bold text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{rupiah(pendingOrder.total_amount)}</span>
+              </div>
+              <p className="text-stone-500 text-[11px] text-center leading-snug">
+                Scan pakai aplikasi e-wallet/m-banking apa saja, bayar sesuai nominal di atas, lalu kirim bukti transfer lewat WhatsApp.
+              </p>
+              <button
+                onClick={confirmPaid}
+                className="w-full bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-md shadow-emerald-200"
+              >
+                <MessageCircle className="w-4 h-4" /> Sudah Bayar, Kirim Bukti
+              </button>
+              <button onClick={() => setPendingOrder(null)} className="text-stone-400 text-xs font-medium py-1">
+                Tutup
+              </button>
+            </div>
           </div>
         )}
       </div>
