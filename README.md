@@ -88,48 +88,36 @@ Project ini sekarang juga sudah jadi **PWA** (Progressive Web App) — pembeli b
 
 Setelah itu, setiap kali kamu `git push` dari Termux, Vercel otomatis build & deploy ulang. URL-nya bisa langsung dibagikan ke pembeli (misal `nama-project.vercel.app`), atau disambungkan ke domain sendiri lewat menu **Settings → Domains** di Vercel.
 
-## Setup pembayaran & database (Midtrans + Supabase)
+## Setup database & backend (Supabase)
 
-Supaya checkout beneran bisa nerima pembayaran & nyimpen data ke database, ada 3 hal yang perlu kamu siapin lewat browser HP (nggak perlu install apa-apa selain yang sudah ada):
+Supaya checkout beneran bisa nyimpen data ke database dan pembeli bisa konfirmasi bayar manual, ada 2 hal yang perlu kamu siapin lewat browser HP (nggak perlu install apa-apa selain yang sudah ada):
 
-### A. Buat akun Midtrans (sandbox dulu, gratis buat coba-coba)
-1. Daftar di https://dashboard.midtrans.com/register
-2. Masuk ke menu **Settings → Access Keys**, mode **Sandbox**
-3. Catat **Server Key** (dipakai di langkah C)
-
-### B. Buat project Supabase (gratis)
+### A. Buat project Supabase (gratis)
 1. Daftar/login di https://supabase.com/dashboard
 2. Buat project baru, catat:
    - **Project Ref** (di URL project atau Settings → General)
    - **Project URL** & **anon/service_role key** (Settings → API)
 3. Buat **Access Token** pribadi di https://supabase.com/dashboard/account/tokens
 
-### C. Simpan semua "kunci rahasia" di GitHub (biar workflow bisa deploy otomatis)
+### B. Simpan semua "kunci rahasia" di GitHub (biar workflow bisa deploy otomatis)
 Di repo GitHub kamu → **Settings → Secrets and variables → Actions → New repository secret**, tambahin:
 | Nama secret | Isinya |
 |---|---|
-| `SUPABASE_ACCESS_TOKEN` | token dari langkah B.3 |
-| `SUPABASE_PROJECT_REF` | project ref dari langkah B.2 |
-| `MIDTRANS_SERVER_KEY` | server key dari langkah A.3 |
+| `SUPABASE_ACCESS_TOKEN` | token dari langkah A.3 |
+| `SUPABASE_PROJECT_REF` | project ref dari langkah A.2 |
 | `ADMIN_PASSWORD` | bikin password sendiri buat masuk halaman admin toko |
 
-### D. Deploy backend
-Setiap kali kamu push (git push) dan ada perubahan di folder `supabase/`, workflow **Deploy Backend (Supabase)** otomatis jalan di tab Actions — bikin tabel database & upload function pembayaran ke server Supabase kamu.
+### C. Deploy backend
+Setiap kali kamu push (git push) dan ada perubahan di folder `supabase/`, workflow **Deploy Backend (Supabase)** otomatis jalan di tab Actions — bikin tabel database & upload function ke server Supabase kamu.
 
-### E. Sambungkan frontend ke backend
-Buka `src/App.jsx`, cari baris ini di bagian atas file:
+### D. Sambungkan frontend ke backend
+Buka `src/App.jsx` (dan `src/Admin.jsx`), cari baris ini di bagian atas file:
 ```js
 const SUPABASE_FUNCTIONS_URL = "https://GANTI-DENGAN-PROJECT-REF.functions.supabase.co";
 ```
 Ganti `GANTI-DENGAN-PROJECT-REF` dengan project ref Supabase kamu, lalu commit & push lagi (APK juga otomatis kebuild ulang dengan URL yang benar).
 
-### F. Kasih tahu Midtrans ke mana harus lapor kalau ada yang bayar
-Di dashboard Midtrans → **Settings → Configuration** → isi **Payment Notification URL** dengan:
-```
-https://<project-ref>.functions.supabase.co/midtrans-webhook
-```
-
-### G. Isi stok awal (opsional)
+### E. Isi stok awal (opsional)
 Kalau mau ngatur batas stok tiap produk, buka Supabase Dashboard → **Table Editor → stock**, tambah baris manual, contoh:
 | app_id | variant_label | stock_qty |
 |---|---|---|
@@ -140,16 +128,16 @@ Kalau baris `app_id + variant_label` belum ada di tabel `stock`, sistem anggap s
 ## Fitur toko
 
 - **Search bar** — pembeli bisa cari aplikasi langsung dari halaman utama.
+- **Checkout via QRIS + WhatsApp** — pas klik "Bayar Sekarang", order tersimpan status `pending`, lalu muncul kode QRIS toko buat di-scan pembeli. Setelah bayar, pembeli tekan "Sudah Bayar, Kirim Bukti" dan diarahkan ke chat WhatsApp buat kirim bukti transfer.
 - **Riwayat pesanan** — pembeli isi nomor WhatsApp saat checkout, lalu bisa cek status & lihat akun yang sudah dikirim lewat ikon jam di header (fitur "Cek" pakai nomor WA yang sama).
-- **Pengiriman otomatis** — begitu pembayaran lunas (webhook Midtrans), sistem otomatis ambil 1 akun dari stok kredensial (kalau ada) dan langsung muncul di halaman riwayat pesanan pembeli. Kalau stok kredensial kosong, admin bisa kirim manual lewat halaman admin.
+- **Konfirmasi bayar manual** — admin cek bukti transfer yang masuk lewat WhatsApp, lalu tekan **Tandai Lunas** di halaman admin. Sistem otomatis ambil 1 akun dari stok kredensial (kalau ada) dan langsung muncul di halaman riwayat pesanan pembeli. Kalau stok kredensial kosong, admin bisa kirim manual.
 - **Halaman admin** — buka `https://domain-toko-kamu/?admin=1`, login pakai `ADMIN_PASSWORD` yang kamu set di secret GitHub. Dari situ bisa:
-  - Lihat semua pesanan & status pembayaran
+  - Lihat semua pesanan & tandai lunas setelah bukti transfer dicek
   - Kirim akun manual kalau stok kredensial kosong
   - Atur batas stok tiap paket
   - Isi/hapus stok akun siap kirim (buat pengiriman otomatis) — tempel banyak akun sekaligus, satu baris satu akun
 
 ### Setelah semua siap
-- Mode sekarang masih **sandbox** (uang gak beneran kepotong) — bagus buat tes alur checkout dulu.
-- Kalau sudah yakin lancar, ganti ke Server Key **production** di Midtrans, dan set secret `MIDTRANS_SERVER_KEY` + ubah `MIDTRANS_IS_PRODUCTION=true` di workflow.
-- Nomor WhatsApp (`WHATSAPP_NUMBER`) masih ada di kode buat kamu pakai manual kalau perlu chat customer, tapi checkout utama sekarang lewat halaman pembayaran Midtrans.
+Nomor WhatsApp (`WHATSAPP_NUMBER`) dipakai buat nerima pesan konfirmasi pembayaran dari pembeli — pastikan nomornya aktif dan kamu rutin cek chat masuk buat konfirmasi lunas di halaman admin.
+
 
