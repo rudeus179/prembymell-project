@@ -99,6 +99,7 @@ const WHATSAPP_NUMBER = "6285733335037";
 // Ganti dengan URL project Supabase kamu sendiri, contoh:
 // "https://xxxxxxxxxxxx.functions.supabase.co"
 const SUPABASE_FUNCTIONS_URL = "https://bcuupxqrbczhmhmrwrzv.functions.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_r_CYjAY3OvGaWtXE6B1eWA_xja80Mll";
 const CONTACT_STORAGE_KEY = "pm_contact";
 const STATUS_LABEL = { pending: "Menunggu Pembayaran", paid: "Lunas", failed: "Gagal / Kedaluwarsa" };
 
@@ -269,7 +270,11 @@ export default function PrembymellApp() {
     try {
       const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/get-orders`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
         body: JSON.stringify({ contact }),
       });
       const data = await res.json();
@@ -335,7 +340,11 @@ export default function PrembymellApp() {
     try {
       const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/create-order`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
         body: JSON.stringify({
           contact: contact.trim(),
           cart: cart.map((i) => ({
