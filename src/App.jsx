@@ -251,6 +251,9 @@ export default function PrembymellApp() {
   const [toast, setToast] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
   const [pendingOrder, setPendingOrder] = useState(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [proofUploaded, setProofUploaded] = useState(false);
+  const [proofError, setProofError] = useState("");
   const [contact, setContact] = useState(() => localStorage.getItem(CONTACT_STORAGE_KEY) || "");
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -365,7 +368,7 @@ export default function PrembymellApp() {
       const itemLines = cart
         .map((i) => `- ${i.app.name} (${i.variant.label}) x${i.qty} = ${rupiah(i.variant.price * i.qty)}`)
         .join("\n");
-      setPendingOrder({ order_code: data.order_code, total_amount: data.total_amount, itemLines });
+      setPendingOrder({ order_id: data.order_id, order_code: data.order_code, total_amount: data.total_amount, itemLines });
       setCart([]);
     } catch (e) {
       setToast(typeof e.message === "string" ? e.message : "Gagal checkout, coba lagi");
@@ -377,11 +380,57 @@ export default function PrembymellApp() {
 
   function confirmPaid() {
     if (!pendingOrder) return;
-    const message =
-      `Halo, mau konfirmasi pesanan ${pendingOrder.order_code}\n\n${pendingOrder.itemLines}\n\nTotal: ${rupiah(pendingOrder.total_amount)}\n` +
-      `Saya sudah bayar via QRIS, ini bukti transfernya:`;
+    const message = proofUploaded
+      ? `Halo, mau konfirmasi pesanan ${pendingOrder.order_code}\n\n${pendingOrder.itemLines}\n\nTotal: ${rupiah(pendingOrder.total_amount)}\n` +
+        `Saya sudah bayar via QRIS, bukti transfernya sudah saya upload di aplikasi ya 🙏`
+      : `Halo, mau konfirmasi pesanan ${pendingOrder.order_code}\n\n${pendingOrder.itemLines}\n\nTotal: ${rupiah(pendingOrder.total_amount)}\n` +
+        `Saya sudah bayar via QRIS. (Kalau upload bukti di aplikasi gagal, ini saya lampirkan screenshotnya manual di chat ini ya)`;
     window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     setPendingOrder(null);
+    setProofUploaded(false);
+    setProofError("");
+  }
+
+  async function handleProofFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !pendingOrder) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setProofError("Format foto harus JPG, PNG, atau WebP");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProofError("Ukuran foto maksimal 5MB");
+      return;
+    }
+    setUploadingProof(true);
+    setProofError("");
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = () => reject(new Error("Gagal membaca file"));
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/upload-proof`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ order_id: pendingOrder.order_id, file_base64: base64, content_type: file.type }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal upload bukti");
+      setProofUploaded(true);
+      setToast("Bukti pembayaran terkirim!");
+      setTimeout(() => setToast(""), 2000);
+    } catch (err) {
+      setProofError(typeof err.message === "string" ? err.message : "Gagal upload bukti, coba lagi");
+    } finally {
+      setUploadingProof(false);
+    }
   }
 
   return (
@@ -662,15 +711,44 @@ export default function PrembymellApp() {
                 <span className="text-stone-800 font-bold text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{rupiah(pendingOrder.total_amount)}</span>
               </div>
               <p className="text-stone-500 text-[11px] text-center leading-snug">
-                Scan pakai aplikasi e-wallet/m-banking apa saja, bayar sesuai nominal di atas, lalu kirim bukti transfer lewat WhatsApp.
+                Scan pakai aplikasi e-wallet/m-banking apa saja, bayar sesuai nominal di atas, lalu upload bukti transfernya di bawah ini.
               </p>
+
+              <label className="w-full flex flex-col gap-1.5">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleProofFile}
+                  disabled={uploadingProof || proofUploaded}
+                  className="hidden"
+                  id="proof-file-input"
+                />
+                <span
+                  onClick={() => !uploadingProof && !proofUploaded && document.getElementById("proof-file-input").click()}
+                  className={`w-full text-center font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 border-2 border-dashed cursor-pointer ${
+                    proofUploaded
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-600"
+                      : "border-orange-200 bg-orange-50 text-stone-600"
+                  }`}
+                >
+                  {proofUploaded ? (
+                    <><Check className="w-4 h-4" /> Bukti Terupload</>
+                  ) : uploadingProof ? (
+                    "Mengupload..."
+                  ) : (
+                    "Upload Foto Bukti Transfer"
+                  )}
+                </span>
+              </label>
+              {proofError && <p className="text-rose-500 text-[11px] text-center">{proofError}</p>}
+
               <button
                 onClick={confirmPaid}
                 className="w-full bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-md shadow-emerald-200"
               >
-                <MessageCircle className="w-4 h-4" /> Sudah Bayar, Kirim Bukti
+                <MessageCircle className="w-4 h-4" /> {proofUploaded ? "Konfirmasi ke WhatsApp" : "Sudah Bayar, Kirim Bukti"}
               </button>
-              <button onClick={() => setPendingOrder(null)} className="text-stone-400 text-xs font-medium py-1">
+              <button onClick={() => { setPendingOrder(null); setProofUploaded(false); setProofError(""); }} className="text-stone-400 text-xs font-medium py-1">
                 Tutup
               </button>
             </div>
