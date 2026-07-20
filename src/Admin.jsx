@@ -75,6 +75,11 @@ function OrdersTab({ password }) {
   }
   useEffect(() => { load(); }, []);
 
+  async function markPaid(orderId) {
+    await callAdmin(password, "mark_paid", { order_id: orderId });
+    load();
+  }
+
   async function sendManual(itemId) {
     const content = manualInputs[itemId];
     if (!content) return;
@@ -98,6 +103,14 @@ function OrdersTab({ password }) {
               </span>
             </div>
             <p className="text-stone-300 text-xs">WA: {order.customer_contact || "-"}</p>
+            {order.status === "pending" && (
+              <button
+                onClick={() => markPaid(order.id)}
+                className="self-start bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
+              >
+                Tandai Lunas
+              </button>
+            )}
             {order.order_items.map((item) => (
               <div key={item.id} className="text-sm text-white border-t border-stone-700 pt-2">
                 <div className="flex justify-between">
