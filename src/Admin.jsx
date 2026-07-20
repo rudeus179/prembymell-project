@@ -1,5 +1,23 @@
-import { useState, useEffect } from "react";
-import { Lock, RefreshCw, Send } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import {
+  Lock,
+  RefreshCw,
+  Send,
+  LogOut,
+  ShoppingBag,
+  Boxes,
+  KeyRound,
+  CheckCircle2,
+  Clock3,
+  XCircle,
+  ImageOff,
+  Trash2,
+  Plus,
+  Wallet,
+  Copy,
+  Check,
+  AlertTriangle,
+} from "lucide-react";
 
 const SUPABASE_FUNCTIONS_URL = "https://bcuupxqrbczhmhmrwrzv.functions.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_r_CYjAY3OvGaWtXE6B1eWA_xja80Mll";
@@ -20,6 +38,62 @@ async function callAdmin(password, action, payload) {
   if (!res.ok) throw new Error(data.error || "Gagal");
   return data;
 }
+
+/* ---------- small shared bits ---------- */
+
+function StatusBadge({ status }) {
+  const map = {
+    paid: { label: "Lunas", cls: "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30", Icon: CheckCircle2 },
+    failed: { label: "Gagal", cls: "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/30", Icon: XCircle },
+    pending: { label: "Menunggu", cls: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30", Icon: Clock3 },
+  };
+  const s = map[status] || map.pending;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${s.cls}`}>
+      <s.Icon className="w-3 h-3" /> {s.label}
+    </span>
+  );
+}
+
+function EmptyState({ icon: Icon, text }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-10 text-stone-500">
+      <Icon className="w-8 h-8 opacity-50" />
+      <p className="text-sm">{text}</p>
+    </div>
+  );
+}
+
+function Spinner({ className = "w-4 h-4" }) {
+  return <RefreshCw className={`${className} animate-spin`} />;
+}
+
+function SectionTitle({ children, count }) {
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <p className="text-stone-400 text-xs font-bold uppercase tracking-wide">{children}</p>
+      {count !== undefined && (
+        <span className="text-[11px] font-bold text-stone-500 bg-stone-800 rounded-full px-2 py-0.5">{count}</span>
+      )}
+    </div>
+  );
+}
+
+function RefreshButton({ onClick, loading }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="self-end flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-white bg-stone-800/80 hover:bg-stone-800 border border-stone-700 rounded-full px-3 py-1.5 transition-colors disabled:opacity-60"
+    >
+      <Spinner className={`w-3.5 h-3.5 ${loading ? "" : "hidden"}`} />
+      <RefreshCw className={`w-3.5 h-3.5 ${loading ? "hidden" : ""}`} />
+      Refresh
+    </button>
+  );
+}
+
+/* ---------- login ---------- */
 
 function LoginGate({ onSuccess }) {
   const [password, setPassword] = useState("");
@@ -42,21 +116,42 @@ function LoginGate({ onSuccess }) {
   }
 
   return (
-    <div className="min-h-screen bg-stone-900 flex items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-xs bg-stone-800 rounded-2xl p-6 flex flex-col gap-4 shadow-xl">
-        <div className="flex flex-col items-center gap-2 text-white">
-          <Lock className="w-6 h-6" />
-          <p className="font-bold">Admin Prembymell</p>
+    <div className="min-h-screen bg-stone-950 flex items-center justify-center px-4 relative overflow-hidden">
+      <div className="absolute -top-24 -left-24 w-72 h-72 bg-pink-600/20 rounded-full blur-3xl" />
+      <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-fuchsia-600/20 rounded-full blur-3xl" />
+      <form
+        onSubmit={submit}
+        className="relative w-full max-w-xs bg-stone-900/90 backdrop-blur border border-stone-800 rounded-3xl p-7 flex flex-col gap-5 shadow-2xl"
+      >
+        <div className="flex flex-col items-center gap-3 text-white">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-pink-500/20">
+            <Lock className="w-6 h-6" />
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-lg leading-tight">Admin Prembymell</p>
+            <p className="text-stone-500 text-xs mt-0.5">Masuk untuk kelola pesanan</p>
+          </div>
         </div>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password admin"
-          className="bg-stone-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-400"
-        />
-        {error && <p className="text-rose-400 text-xs">{error}</p>}
-        <button disabled={loading} className="bg-pink-500 disabled:opacity-60 text-white font-bold text-sm py-2.5 rounded-lg">
+        <div className="flex flex-col gap-1.5">
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password admin"
+            autoFocus
+            className="bg-stone-800 text-white text-sm rounded-xl px-3.5 py-3 border border-stone-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent placeholder:text-stone-500 transition-shadow"
+          />
+          {error && (
+            <p className="text-rose-400 text-xs flex items-center gap-1.5 px-1">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {error}
+            </p>
+          )}
+        </div>
+        <button
+          disabled={loading}
+          className="flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-fuchsia-600 disabled:opacity-60 text-white font-bold text-sm py-3 rounded-xl shadow-lg shadow-pink-500/20 hover:brightness-110 active:scale-[0.98] transition"
+        >
+          {loading && <Spinner className="w-4 h-4" />}
           {loading ? "Memeriksa..." : "Masuk"}
         </button>
       </form>
@@ -64,10 +159,13 @@ function LoginGate({ onSuccess }) {
   );
 }
 
+/* ---------- orders ---------- */
+
 function OrdersTab({ password }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [manualInputs, setManualInputs] = useState({});
+  const [busyId, setBusyId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -81,88 +179,150 @@ function OrdersTab({ password }) {
   useEffect(() => { load(); }, []);
 
   async function markPaid(orderId) {
-    await callAdmin(password, "mark_paid", { order_id: orderId });
-    load();
+    setBusyId(orderId);
+    try {
+      await callAdmin(password, "mark_paid", { order_id: orderId });
+      await load();
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function sendManual(itemId) {
     const content = manualInputs[itemId];
     if (!content) return;
-    await callAdmin(password, "mark_delivered", { order_item_id: itemId, content });
-    setManualInputs((p) => ({ ...p, [itemId]: "" }));
-    load();
+    setBusyId(itemId);
+    try {
+      await callAdmin(password, "mark_delivered", { order_item_id: itemId, content });
+      setManualInputs((p) => ({ ...p, [itemId]: "" }));
+      await load();
+    } finally {
+      setBusyId(null);
+    }
   }
+
+  const stats = useMemo(() => {
+    const pending = orders.filter((o) => o.status === "pending").length;
+    const paid = orders.filter((o) => o.status === "paid").length;
+    const revenue = orders
+      .filter((o) => o.status === "paid")
+      .reduce((s, o) => s + o.order_items.reduce((s2, i) => s2 + i.price * i.qty, 0), 0);
+    return { pending, paid, revenue };
+  }, [orders]);
 
   return (
     <div className="flex flex-col gap-3">
-      <button onClick={load} className="self-end flex items-center gap-1 text-xs text-stone-400"><RefreshCw className="w-3 h-3" /> Refresh</button>
-      {loading && <p className="text-stone-400 text-sm">Memuat...</p>}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-stone-800/70 border border-stone-700/60 rounded-xl p-3 flex flex-col gap-1">
+          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Menunggu</span>
+          <span className="text-white font-bold text-lg">{stats.pending}</span>
+        </div>
+        <div className="bg-stone-800/70 border border-stone-700/60 rounded-xl p-3 flex flex-col gap-1">
+          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Lunas</span>
+          <span className="text-white font-bold text-lg">{stats.paid}</span>
+        </div>
+        <div className="bg-stone-800/70 border border-stone-700/60 rounded-xl p-3 flex flex-col gap-1 col-span-1">
+          <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wide flex items-center gap-1">
+            <Wallet className="w-3 h-3" /> Omzet
+          </span>
+          <span className="text-white font-bold text-sm truncate">{rupiah(stats.revenue)}</span>
+        </div>
+      </div>
+
+      <RefreshButton onClick={load} loading={loading} />
+
+      {!loading && orders.length === 0 && <EmptyState icon={ShoppingBag} text="Belum ada pesanan" />}
+
       {orders.map((order) => {
         const total = order.order_items.reduce((s, i) => s + i.price * i.qty, 0);
+        const isBusy = busyId === order.id;
         return (
-          <div key={order.id} className="bg-stone-800 rounded-xl p-3.5 flex flex-col gap-2">
+          <div key={order.id} className="bg-stone-800/70 border border-stone-700/60 rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-stone-400">{new Date(order.created_at).toLocaleString("id-ID")}</span>
-              <span className={`font-bold px-2 py-0.5 rounded-full ${order.status === "paid" ? "bg-emerald-900 text-emerald-300" : order.status === "failed" ? "bg-rose-900 text-rose-300" : "bg-amber-900 text-amber-300"}`}>
-                {order.status}
-              </span>
+              <span className="text-stone-500">{new Date(order.created_at).toLocaleString("id-ID")}</span>
+              <StatusBadge status={order.status} />
             </div>
-            <p className="text-stone-300 text-xs">WA: {order.customer_contact || "-"}</p>
+            <p className="text-stone-300 text-xs flex items-center gap-1.5">
+              <span className="text-stone-500">WA:</span> {order.customer_contact || "-"}
+            </p>
+
             {order.status === "pending" && (
               order.proof_signed_url ? (
-                <div className="flex flex-col gap-1.5">
-                  <a href={order.proof_signed_url} target="_blank" rel="noreferrer">
+                <div className="flex flex-col gap-2">
+                  <a href={order.proof_signed_url} target="_blank" rel="noreferrer" className="block">
                     <img
                       src={order.proof_signed_url}
                       alt="Bukti bayar"
-                      className="w-full max-h-56 object-contain rounded-lg border border-stone-700 bg-stone-900"
+                      className="w-full max-h-56 object-contain rounded-xl border border-stone-700 bg-stone-900"
                     />
                   </a>
-                  <p className="text-stone-500 text-[10px]">Cek fotonya dulu, baru tandai lunas kalau nominal & tujuan transfer cocok.</p>
+                  <p className="text-stone-500 text-[11px] flex items-start gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                    Cek fotonya dulu, baru tandai lunas kalau nominal &amp; tujuan transfer cocok.
+                  </p>
                   <button
                     onClick={() => markPaid(order.id)}
-                    className="self-start bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
+                    disabled={isBusy}
+                    className="self-start flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition-colors"
                   >
+                    {isBusy ? <Spinner className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     Tandai Lunas
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-amber-400 text-[11px]">Belum ada bukti bayar diupload</p>
+                <div className="flex items-center justify-between gap-2 bg-stone-900/60 rounded-xl px-3 py-2.5">
+                  <p className="text-amber-400 text-[11px] flex items-center gap-1.5">
+                    <ImageOff className="w-3.5 h-3.5 shrink-0" /> Belum ada bukti bayar diupload
+                  </p>
                   <button
                     onClick={() => markPaid(order.id)}
-                    className="self-start bg-stone-700 text-stone-300 text-xs font-bold px-3 py-1.5 rounded-lg"
+                    disabled={isBusy}
+                    className="shrink-0 flex items-center gap-1.5 bg-stone-700 hover:bg-stone-600 disabled:opacity-60 text-stone-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                   >
+                    {isBusy && <Spinner className="w-3.5 h-3.5" />}
                     Tandai Lunas
                   </button>
                 </div>
               )
             )}
-            {order.order_items.map((item) => (
-              <div key={item.id} className="text-sm text-white border-t border-stone-700 pt-2">
-                <div className="flex justify-between">
-                  <span>{item.app_name} · {item.variant_label} (x{item.qty})</span>
-                  <span className="font-mono">{rupiah(item.price * item.qty)}</span>
+
+            <div className="flex flex-col divide-y divide-stone-700/60">
+              {order.order_items.map((item) => (
+                <div key={item.id} className="text-sm text-white py-2 first:pt-0">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-stone-200">{item.app_name} · {item.variant_label} <span className="text-stone-500">×{item.qty}</span></span>
+                    <span className="font-mono text-stone-300 shrink-0">{rupiah(item.price * item.qty)}</span>
+                  </div>
+                  {order.status === "paid" && (
+                    item.delivered_content ? (
+                      <p className="text-emerald-400 text-xs mt-1.5 font-mono break-all bg-emerald-500/10 rounded-lg px-2 py-1.5 flex items-start gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {item.delivered_content}
+                      </p>
+                    ) : (
+                      <div className="flex gap-1.5 mt-1.5">
+                        <input
+                          value={manualInputs[item.id] || ""}
+                          onChange={(e) => setManualInputs((p) => ({ ...p, [item.id]: e.target.value }))}
+                          placeholder="Isi akun buat kirim manual"
+                          className="flex-1 bg-stone-900 text-white text-xs rounded-lg px-2.5 py-2 border border-stone-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                        <button
+                          onClick={() => sendManual(item.id)}
+                          disabled={busyId === item.id}
+                          className="shrink-0 flex items-center justify-center bg-pink-500 hover:bg-pink-400 disabled:opacity-60 text-white rounded-lg w-9 transition-colors"
+                        >
+                          {busyId === item.id ? <Spinner className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    )
+                  )}
                 </div>
-                {order.status === "paid" && (
-                  item.delivered_content ? (
-                    <p className="text-emerald-400 text-xs mt-1 font-mono break-all">✓ {item.delivered_content}</p>
-                  ) : (
-                    <div className="flex gap-1.5 mt-1.5">
-                      <input
-                        value={manualInputs[item.id] || ""}
-                        onChange={(e) => setManualInputs((p) => ({ ...p, [item.id]: e.target.value }))}
-                        placeholder="Isi akun buat kirim manual"
-                        className="flex-1 bg-stone-700 text-white text-xs rounded-lg px-2 py-1.5"
-                      />
-                      <button onClick={() => sendManual(item.id)} className="shrink-0 bg-pink-500 text-white rounded-lg px-2"><Send className="w-3.5 h-3.5" /></button>
-                    </div>
-                  )
-                )}
-              </div>
-            ))}
-            <div className="flex justify-between text-xs text-stone-400 border-t border-stone-700 pt-2">
-              <span>Total</span><span className="font-mono">{rupiah(total)}</span>
+              ))}
+            </div>
+
+            <div className="flex justify-between text-xs text-stone-400 border-t border-stone-700/60 pt-2.5">
+              <span className="font-semibold">Total</span>
+              <span className="font-mono font-bold text-white">{rupiah(total)}</span>
             </div>
           </div>
         );
@@ -171,9 +331,12 @@ function OrdersTab({ password }) {
   );
 }
 
+/* ---------- stock ---------- */
+
 function StockTab({ password }) {
   const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ app_id: "", variant_label: "", stock_qty: "" });
 
   async function load() {
@@ -189,36 +352,59 @@ function StockTab({ password }) {
 
   async function save(e) {
     e.preventDefault();
-    await callAdmin(password, "upsert_stock", { app_id: form.app_id, variant_label: form.variant_label, stock_qty: Number(form.stock_qty) });
-    setForm({ app_id: "", variant_label: "", stock_qty: "" });
-    load();
+    setSaving(true);
+    try {
+      await callAdmin(password, "upsert_stock", { app_id: form.app_id, variant_label: form.variant_label, stock_qty: Number(form.stock_qty) });
+      setForm({ app_id: "", variant_label: "", stock_qty: "" });
+      await load();
+    } finally {
+      setSaving(false);
+    }
   }
+
+  const inputCls = "bg-stone-900 text-white text-xs rounded-lg px-3 py-2.5 border border-stone-700 focus:outline-none focus:ring-2 focus:ring-pink-500 placeholder:text-stone-500";
 
   return (
     <div className="flex flex-col gap-3">
-      <form onSubmit={save} className="bg-stone-800 rounded-xl p-3.5 flex flex-col gap-2">
-        <p className="text-white text-xs font-bold">Set / update batas stok</p>
-        <input required value={form.app_id} onChange={(e) => setForm({ ...form, app_id: e.target.value })} placeholder="app_id, misal: netflix" className="bg-stone-700 text-white text-xs rounded-lg px-2 py-2" />
-        <input required value={form.variant_label} onChange={(e) => setForm({ ...form, variant_label: e.target.value })} placeholder="variant_label, misal: Privat - 1 Bulan" className="bg-stone-700 text-white text-xs rounded-lg px-2 py-2" />
-        <input required type="number" value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: e.target.value })} placeholder="Jumlah stok" className="bg-stone-700 text-white text-xs rounded-lg px-2 py-2" />
-        <button className="bg-pink-500 text-white text-xs font-bold py-2 rounded-lg">Simpan</button>
+      <form onSubmit={save} className="bg-stone-800/70 border border-stone-700/60 rounded-2xl p-4 flex flex-col gap-2.5">
+        <p className="text-white text-xs font-bold flex items-center gap-1.5">
+          <Boxes className="w-4 h-4 text-pink-400" /> Set / update batas stok
+        </p>
+        <input required value={form.app_id} onChange={(e) => setForm({ ...form, app_id: e.target.value })} placeholder="app_id, misal: netflix" className={inputCls} />
+        <input required value={form.variant_label} onChange={(e) => setForm({ ...form, variant_label: e.target.value })} placeholder="variant_label, misal: Privat - 1 Bulan" className={inputCls} />
+        <input required type="number" value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: e.target.value })} placeholder="Jumlah stok" className={inputCls} />
+        <button disabled={saving} className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-500 to-fuchsia-600 disabled:opacity-60 text-white text-xs font-bold py-2.5 rounded-lg transition">
+          {saving ? <Spinner className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          Simpan
+        </button>
       </form>
-      <button onClick={load} className="self-end flex items-center gap-1 text-xs text-stone-400"><RefreshCw className="w-3 h-3" /> Refresh</button>
-      {loading && <p className="text-stone-400 text-sm">Memuat...</p>}
-      {stock.map((s) => (
-        <div key={s.id} className="bg-stone-800 rounded-xl p-3 flex justify-between text-sm text-white">
-          <span>{s.app_id} · {s.variant_label}</span>
-          <span className="font-mono">{s.stock_qty}</span>
-        </div>
-      ))}
+
+      <RefreshButton onClick={load} loading={loading} />
+
+      {!loading && stock.length === 0 && <EmptyState icon={Boxes} text="Belum ada data stok" />}
+
+      <div className="flex flex-col gap-2">
+        {stock.map((s) => (
+          <div key={s.id} className="bg-stone-800/70 border border-stone-700/60 rounded-xl p-3.5 flex justify-between items-center text-sm text-white">
+            <span className="text-stone-200">{s.app_id} <span className="text-stone-600">·</span> {s.variant_label}</span>
+            <span className={`font-mono font-bold px-2.5 py-1 rounded-lg text-xs ${s.stock_qty > 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"}`}>
+              {s.stock_qty}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
+/* ---------- credentials ---------- */
+
 function CredentialsTab({ password }) {
   const [creds, setCreds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ app_id: "", variant_label: "", lines: "" });
+  const [copiedId, setCopiedId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -233,13 +419,18 @@ function CredentialsTab({ password }) {
 
   async function add(e) {
     e.preventDefault();
-    await callAdmin(password, "add_credentials", {
-      app_id: form.app_id,
-      variant_label: form.variant_label,
-      lines: form.lines.split("\n"),
-    });
-    setForm({ app_id: "", variant_label: "", lines: "" });
-    load();
+    setSaving(true);
+    try {
+      await callAdmin(password, "add_credentials", {
+        app_id: form.app_id,
+        variant_label: form.variant_label,
+        lines: form.lines.split("\n"),
+      });
+      setForm({ app_id: "", variant_label: "", lines: "" });
+      await load();
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function del(id) {
@@ -247,38 +438,76 @@ function CredentialsTab({ password }) {
     load();
   }
 
+  function copy(c) {
+    navigator.clipboard?.writeText(c.content);
+    setCopiedId(c.id);
+    setTimeout(() => setCopiedId((cur) => (cur === c.id ? null : cur)), 1200);
+  }
+
   const available = creds.filter((c) => !c.is_used);
   const used = creds.filter((c) => c.is_used);
+  const inputCls = "bg-stone-900 text-white text-xs rounded-lg px-3 py-2.5 border border-stone-700 focus:outline-none focus:ring-2 focus:ring-pink-500 placeholder:text-stone-500";
 
   return (
     <div className="flex flex-col gap-3">
-      <form onSubmit={add} className="bg-stone-800 rounded-xl p-3.5 flex flex-col gap-2">
-        <p className="text-white text-xs font-bold">Isi stok akun siap kirim (satu baris = satu akun)</p>
-        <input required value={form.app_id} onChange={(e) => setForm({ ...form, app_id: e.target.value })} placeholder="app_id, misal: netflix" className="bg-stone-700 text-white text-xs rounded-lg px-2 py-2" />
-        <input required value={form.variant_label} onChange={(e) => setForm({ ...form, variant_label: e.target.value })} placeholder="variant_label, misal: Privat - 1 Bulan" className="bg-stone-700 text-white text-xs rounded-lg px-2 py-2" />
-        <textarea required value={form.lines} onChange={(e) => setForm({ ...form, lines: e.target.value })} placeholder={"email1@x.com:pass1\nemail2@x.com:pass2"} rows={4} className="bg-stone-700 text-white text-xs rounded-lg px-2 py-2 font-mono" />
-        <button className="bg-pink-500 text-white text-xs font-bold py-2 rounded-lg">Tambah ke stok</button>
+      <form onSubmit={add} className="bg-stone-800/70 border border-stone-700/60 rounded-2xl p-4 flex flex-col gap-2.5">
+        <p className="text-white text-xs font-bold flex items-center gap-1.5">
+          <KeyRound className="w-4 h-4 text-pink-400" /> Isi stok akun siap kirim
+        </p>
+        <p className="text-stone-500 text-[11px] -mt-1.5">Satu baris = satu akun</p>
+        <input required value={form.app_id} onChange={(e) => setForm({ ...form, app_id: e.target.value })} placeholder="app_id, misal: netflix" className={inputCls} />
+        <input required value={form.variant_label} onChange={(e) => setForm({ ...form, variant_label: e.target.value })} placeholder="variant_label, misal: Privat - 1 Bulan" className={inputCls} />
+        <textarea required value={form.lines} onChange={(e) => setForm({ ...form, lines: e.target.value })} placeholder={"email1@x.com:pass1\nemail2@x.com:pass2"} rows={4} className={`${inputCls} font-mono resize-none`} />
+        <button disabled={saving} className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-500 to-fuchsia-600 disabled:opacity-60 text-white text-xs font-bold py-2.5 rounded-lg transition">
+          {saving ? <Spinner className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          Tambah ke stok
+        </button>
       </form>
-      <button onClick={load} className="self-end flex items-center gap-1 text-xs text-stone-400"><RefreshCw className="w-3 h-3" /> Refresh</button>
-      {loading && <p className="text-stone-400 text-sm">Memuat...</p>}
 
-      <p className="text-stone-400 text-xs font-bold mt-1">Siap kirim ({available.length})</p>
-      {available.map((c) => (
-        <div key={c.id} className="bg-stone-800 rounded-xl p-3 flex items-center justify-between gap-2 text-sm text-white">
-          <span className="font-mono text-xs break-all">{c.app_id} · {c.variant_label} — {c.content}</span>
-          <button onClick={() => del(c.id)} className="shrink-0 text-rose-400 text-xs font-bold">Hapus</button>
-        </div>
-      ))}
+      <RefreshButton onClick={load} loading={loading} />
 
-      <p className="text-stone-400 text-xs font-bold mt-1">Sudah terpakai ({used.length})</p>
-      {used.map((c) => (
-        <div key={c.id} className="bg-stone-800/50 rounded-xl p-3 text-sm text-stone-400">
-          <span className="font-mono text-xs break-all">{c.app_id} · {c.variant_label} — {c.content}</span>
-        </div>
-      ))}
+      <SectionTitle count={available.length}>Siap kirim</SectionTitle>
+      {!loading && available.length === 0 && <EmptyState icon={KeyRound} text="Belum ada akun siap kirim" />}
+      <div className="flex flex-col gap-2">
+        {available.map((c) => (
+          <div key={c.id} className="bg-stone-800/70 border border-stone-700/60 rounded-xl p-3 flex items-center justify-between gap-2 text-sm text-white">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-stone-400">{c.app_id} · {c.variant_label}</p>
+              <p className="font-mono text-xs break-all text-stone-200 mt-0.5">{c.content}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => copy(c)} className="text-stone-400 hover:text-white p-1.5 rounded-lg hover:bg-stone-700 transition-colors" title="Salin">
+                {copiedId === c.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+              <button onClick={() => del(c.id)} className="text-rose-400 hover:text-rose-300 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors" title="Hapus">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <SectionTitle count={used.length}>Sudah terpakai</SectionTitle>
+      {!loading && used.length === 0 && <EmptyState icon={CheckCircle2} text="Belum ada akun terpakai" />}
+      <div className="flex flex-col gap-2">
+        {used.map((c) => (
+          <div key={c.id} className="bg-stone-900/60 border border-stone-800 rounded-xl p-3 text-sm text-stone-500">
+            <p className="text-[11px] font-bold text-stone-600">{c.app_id} · {c.variant_label}</p>
+            <p className="font-mono text-xs break-all mt-0.5">{c.content}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
+/* ---------- shell ---------- */
+
+const TABS = [
+  { id: "orders", label: "Pesanan", Icon: ShoppingBag },
+  { id: "stock", label: "Stok", Icon: Boxes },
+  { id: "credentials", label: "Kredensial", Icon: KeyRound },
+];
 
 export default function AdminApp() {
   const [password, setPassword] = useState(() => sessionStorage.getItem(PW_STORAGE_KEY) || "");
@@ -286,17 +515,40 @@ export default function AdminApp() {
 
   if (!password) return <LoginGate onSuccess={setPassword} />;
 
+  function logout() {
+    sessionStorage.removeItem(PW_STORAGE_KEY);
+    setPassword("");
+  }
+
   return (
-    <div className="min-h-screen bg-stone-900 pb-10">
-      <div className="sticky top-0 bg-stone-900/95 backdrop-blur border-b border-stone-800 px-4 pt-4 pb-3 flex flex-col gap-3 z-10">
-        <p className="text-white font-bold">Admin Prembymell</p>
+    <div className="min-h-screen bg-stone-950 pb-10">
+      <div className="sticky top-0 bg-stone-950/90 backdrop-blur border-b border-stone-800 px-4 pt-4 pb-3 flex flex-col gap-3 z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-fuchsia-600 flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4 text-white" />
+            </div>
+            <p className="text-white font-bold">Admin Prembymell</p>
+          </div>
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 text-xs font-semibold text-stone-500 hover:text-rose-400 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Keluar
+          </button>
+        </div>
         <div className="flex gap-2">
-          {[["orders", "Pesanan"], ["stock", "Stok"], ["credentials", "Kredensial"]].map(([id, label]) => (
+          {TABS.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`text-xs font-bold px-3 py-1.5 rounded-full ${tab === id ? "bg-pink-500 text-white" : "bg-stone-800 text-stone-400"}`}
+              className={`flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full transition-colors ${
+                tab === id
+                  ? "bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white shadow-lg shadow-pink-500/20"
+                  : "bg-stone-800/70 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+              }`}
             >
+              <Icon className="w-3.5 h-3.5" />
               {label}
             </button>
           ))}
