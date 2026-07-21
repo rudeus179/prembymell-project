@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, ShoppingCart, Plus, Minus, Check, MessageCircle, Home, X, Sparkles, Trash2, Search, History, PackageCheck, Clock, XCircle, Copy } from "lucide-react";
 import qrisImage from "./assets/qris.jpg";
 import { APPS, CATEGORIES } from "./appsData";
+import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 
 
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
@@ -208,6 +210,28 @@ export default function PrembymellApp() {
     }
     loadStock();
   }, []);
+
+  // Tombol back Android: tutup modal/balik ke halaman sebelumnya dulu, baru keluar app kalau udah di beranda
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let listenerHandle;
+    CapacitorApp.addListener("backButton", () => {
+      if (pendingOrder) {
+        setPendingOrder(null);
+        setProofUploaded(false);
+        setProofError("");
+      } else if (view !== "home") {
+        setView("home");
+      } else {
+        CapacitorApp.exitApp();
+      }
+    }).then((handle) => {
+      listenerHandle = handle;
+    });
+    return () => {
+      listenerHandle?.remove();
+    };
+  }, [view, pendingOrder]);
 
   const filteredApps = useMemo(() => {
     const byCategory = category === "Semua" ? APPS : APPS.filter((a) => a.cat === category);
