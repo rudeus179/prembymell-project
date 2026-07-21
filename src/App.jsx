@@ -1,99 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, ShoppingCart, Plus, Minus, Check, MessageCircle, Home, X, Sparkles, Trash2, Search, History, PackageCheck, Clock, XCircle, Copy } from "lucide-react";
 import qrisImage from "./assets/qris.jpg";
+import { APPS, CATEGORIES } from "./appsData";
 
-const APPS = [
-  { id: "apple-music", icon: "applemusic", name: "Apple Music", cat: "Musik", letter: "AM", bg: "bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500", dark: true, ring: "ring-fuchsia-300", chip: "bg-white text-fuchsia-600", tagline: "Jutaan lagu lossless, bebas iklan", variants: [
-    { label: "Via Invite - 1 Bulan", price: 6000 },
-    { label: "Apple Music Head", price: 8500 },
-  ]},
-  { id: "spotify", icon: "spotify", name: "Spotify", cat: "Musik", letter: "SP", bg: "bg-gradient-to-br from-green-500 to-emerald-600", dark: true, ring: "ring-green-300", chip: "bg-white text-green-600", tagline: "Premium tanpa iklan, bisa download", variants: [
-    { label: "Premium - 1 Bulan", price: 7500 },
-  ]},
-  { id: "loklok", name: "Lok Lok", cat: "Streaming", letter: "LL", bg: "bg-gradient-to-br from-pink-400 to-fuchsia-500", dark: true, ring: "ring-pink-300", chip: "bg-white text-pink-600", tagline: "Nonton drama & film lengkap", variants: [
-    { label: "Plan Standar - 1 Bulan", price: 18000 },
-  ]},
-  { id: "wetv", name: "WeTV", cat: "Streaming", letter: "WT", bg: "bg-gradient-to-br from-blue-600 to-sky-400", dark: true, ring: "ring-blue-300", chip: "bg-white text-blue-600", tagline: "Drama Asia & original series", variants: [
-    { label: "Sharing - 1 Bulan (8 user)", price: 4500 },
-    { label: "Sharing - 1 Bulan (5 user)", price: 5500 },
-    { label: "Privat - 1 Bulan", price: 16500 },
-  ]},
-  { id: "iqiyi", icon: "iqiyi", name: "iQiyi", cat: "Streaming", letter: "IQ", bg: "bg-gradient-to-br from-green-600 to-lime-500", dark: true, ring: "ring-lime-300", chip: "bg-white text-green-700", tagline: "Drama & variety show Asia", variants: [
-    { label: "Sharing Standart - 1 Bulan", price: 3500 },
-    { label: "Sharing Premium - 1 Bulan", price: 4000 },
-    { label: "Sharing Premium - 1 Tahun", price: 7000 },
-    { label: "Private Standart", price: 27000 },
-    { label: "Private Premium", price: 35000 },
-  ]},
-  { id: "hbo", icon: "hbomax", name: "HBO", cat: "Streaming", letter: "HB", bg: "bg-gradient-to-br from-violet-800 via-purple-900 to-stone-900", dark: true, ring: "ring-violet-400", chip: "bg-white text-violet-700", tagline: "Serial & film HBO Original", variants: [
-    { label: "Sharing - 1 Bulan", price: 17000 },
-    { label: "Private - 1 Bulan", price: 72000 },
-  ]},
-  { id: "viu", name: "Viu", cat: "Streaming", letter: "VU", bg: "bg-gradient-to-br from-pink-500 to-purple-600", dark: true, ring: "ring-pink-300", chip: "bg-white text-pink-600", tagline: "Drama Asia, akses antilimit", variants: [
-    { label: "Antilimit", price: 4000 },
-  ]},
-  { id: "visionplus", name: "Vision+", cat: "Streaming", letter: "V+", bg: "bg-gradient-to-br from-red-600 to-orange-500", dark: true, ring: "ring-orange-300", chip: "bg-white text-red-600", tagline: "Siaran TV & film lokal", variants: [
-    { label: "Ultimate Private - 1 Bulan", price: 33000 },
-  ]},
-  { id: "gagaoolala", name: "GagaOoLaLa", cat: "Streaming", letter: "GO", bg: "bg-gradient-to-br from-amber-400 via-pink-500 to-purple-500", dark: true, ring: "ring-pink-300", chip: "bg-white text-pink-600", tagline: "Film & series eksklusif Asia", variants: [
-    { label: "1 Bulan", price: 5500 },
-  ]},
-  { id: "netflix", icon: "netflix", name: "Netflix", cat: "Streaming", letter: "NF", bg: "bg-gradient-to-br from-neutral-900 via-red-800 to-red-600", dark: true, ring: "ring-red-400", chip: "bg-white text-red-600", tagline: "Film & series Ultra HD", variants: [
-    { label: "Privat - 7 Hari", price: 27000 },
-    { label: "Privat - 14 Hari", price: 37000 },
-    { label: "Privat - 1 Bulan", price: 45000 },
-    { label: "Privat - 2 Bulan", price: 72000 },
-    { label: "Privat - 3 Bulan", price: 107000 },
-    { label: "Sharing - 1 Bulan", price: 37000 },
-    { label: "Sharing - 2 Bulan", price: 52000 },
-    { label: "Sharing - 3 Bulan", price: 67000 },
-  ]},
-  { id: "bstation", icon: "bilibili", name: "BStation", cat: "Streaming", letter: "BS", bg: "bg-gradient-to-br from-sky-400 to-pink-400", dark: true, ring: "ring-sky-300", chip: "bg-white text-sky-600", tagline: "Anime sub Indo tanpa iklan", variants: [
-    { label: "Sharing - 1 Bulan", price: 5000 },
-    { label: "Private - 1 Bulan", price: 31000 },
-  ]},
-  { id: "youtube", icon: "youtube", name: "YouTube", cat: "Streaming", letter: "YT", bg: "bg-gradient-to-br from-red-600 to-red-700", dark: true, ring: "ring-red-300", chip: "bg-white text-red-600", tagline: "Bebas iklan + YouTube Music", variants: [
-    { label: "Indplan - 1 Bulan", price: 7500 },
-    { label: "Indplan - 2 Bulan", price: 8500 },
-    { label: "Indplan - 3 Bulan", price: 10000 },
-  ]},
-  { id: "vidio", name: "Vidio", cat: "Streaming", letter: "VD", bg: "bg-gradient-to-br from-orange-500 to-red-500", dark: true, ring: "ring-orange-300", chip: "bg-white text-orange-600", tagline: "Liga Inggris & serial lokal", variants: [
-    { label: "Sharing - 1 Bulan", price: 17000 },
-    { label: "Private - 1 Bulan", price: 30000 },
-  ]},
-  { id: "remini", name: "Remini", cat: "Editing & Foto", letter: "RM", bg: "bg-gradient-to-br from-purple-500 to-pink-500", dark: true, ring: "ring-purple-300", chip: "bg-white text-purple-600", tagline: "Perbaiki & perjelas foto, Android", variants: [
-    { label: "Via Login Aplikasi - 1 Tahun", price: 7000 },
-  ]},
-  { id: "alight-motion", name: "Alight Motion", cat: "Editing & Foto", letter: "AL", bg: "bg-gradient-to-br from-indigo-700 to-blue-600", dark: true, ring: "ring-indigo-300", chip: "bg-white text-indigo-600", tagline: "Edit video & motion graphic pro", variants: [
-    { label: "Private - 1 Tahun (iOS/Andro)", price: 2500 },
-  ]},
-  { id: "lightroom", icon: "adobelightroom", name: "Lightroom", cat: "Editing & Foto", letter: "LR", bg: "bg-gradient-to-br from-blue-600 via-cyan-500 to-indigo-600", dark: true, ring: "ring-cyan-300", chip: "bg-white text-blue-600", tagline: "Preset & edit foto profesional", variants: [
-    { label: "1 Tahun", price: 7000 },
-  ]},
-  { id: "dazzcam", name: "DazzCam", cat: "Editing & Foto", letter: "DZ", bg: "bg-gradient-to-br from-amber-200 to-orange-300", dark: false, ring: "ring-amber-400", chip: "bg-white text-amber-600", tagline: "Filter kamera estetik ala film", variants: [
-    { label: "Lifetime iOS", price: 27000 },
-  ]},
-  { id: "vsco", icon: "vsco", name: "VSCO", cat: "Editing & Foto", letter: "VS", bg: "bg-gradient-to-br from-stone-600 to-stone-900", dark: true, ring: "ring-stone-400", chip: "bg-white text-stone-700", tagline: "Preset & filter estetik", variants: [
-    { label: "Andro/iOS - 1 Tahun", price: 7700 },
-  ]},
-  { id: "capcut", icon: "capcut", name: "CapCut", cat: "Editing & Foto", letter: "CC", bg: "bg-gradient-to-br from-neutral-900 via-neutral-800 to-cyan-600", dark: true, ring: "ring-cyan-300", chip: "bg-white text-neutral-800", tagline: "Edit tanpa watermark, efek terbuka", variants: [
-    { label: "Sharing - 1 Bulan", price: 2500 },
-    { label: "Privat - 1 Bulan", price: 5500 },
-  ]},
-  { id: "canva", icon: "canva", name: "Canva", cat: "Produktivitas", letter: "CV", bg: "bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600", dark: true, ring: "ring-blue-300", chip: "bg-white text-blue-600", tagline: "Semua template & aset premium", variants: [
-    { label: "Design - 1 Month", price: 3000 },
-    { label: "Member - 1 Month", price: 3000 },
-    { label: "Edu Lifetime", price: 3500 },
-    { label: "Member - 1 Tahun", price: 4500 },
-    { label: "Owner - 1 Month", price: 5500 },
-  ]},
-  { id: "chatgpt", icon: "openai", name: "ChatGPT", cat: "Produktivitas", letter: "GPT", bg: "bg-gradient-to-br from-teal-600 to-emerald-700", dark: true, ring: "ring-teal-300", chip: "bg-white text-teal-700", tagline: "Akses ChatGPT Plus", variants: [
-    { label: "Sharing - 1 Bulan", price: 8500 },
-    { label: "Private - 1 Bulan", price: 57000 },
-  ]},
-];
 
-const CATEGORIES = ["Semua", "Streaming", "Musik", "Editing & Foto", "Produktivitas"];
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
 const WHATSAPP_NUMBER = "6285733335037";
 // Ganti dengan URL project Supabase kamu sendiri, contoh:
@@ -102,6 +12,7 @@ const SUPABASE_FUNCTIONS_URL = "https://bcuupxqrbczhmhmrwrzv.functions.supabase.
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_r_CYjAY3OvGaWtXE6B1eWA_xja80Mll";
 const CONTACT_STORAGE_KEY = "pm_contact";
 const STATUS_LABEL = { pending: "Menunggu Pembayaran", paid: "Lunas", failed: "Gagal / Kedaluwarsa" };
+const stockKey = (appId, variantLabel) => `${appId}::${variantLabel}`;
 
 function Badge({ children, className = "" }) {
   return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${className}`}>{children}</span>;
@@ -148,24 +59,38 @@ function MemberCard({ app, variant }) {
   );
 }
 
-function AppCard({ app, onOpen }) {
+function AppCard({ app, onOpen, stockMap }) {
   const cheapest = app.variants.reduce((a, b) => (a.price < b.price ? a : b));
   const glow = app.ring.replace("ring-", "bg-");
   const title = app.dark ? "text-white" : "text-stone-800";
   const sub = app.dark ? "text-white/75" : "text-stone-500";
   const faint = app.dark ? "text-white/60" : "text-stone-500";
   const badgeCls = app.dark ? "bg-white/20 text-white" : "bg-white/70 text-stone-600";
+
+  // Kalau app_id ini belum pernah diisi stoknya di admin, anggap gak dilacak (selalu tersedia)
+  const trackedVariants = app.variants.filter((v) => stockMap[stockKey(app.id, v.label)] !== undefined);
+  const isTracked = trackedVariants.length > 0;
+  const totalStock = trackedVariants.reduce((s, v) => s + (stockMap[stockKey(app.id, v.label)] || 0), 0);
+  const outOfStock = isTracked && totalStock <= 0;
+
   return (
     <button
       onClick={() => onOpen(app)}
-      className={`group relative text-left rounded-2xl ${app.bg} border-2 border-white/30 ring-0 hover:ring-2 ${app.ring} transition-all p-4 flex flex-col gap-3 shadow-md hover:shadow-xl hover:-translate-y-0.5 overflow-hidden`}
+      className={`group relative text-left rounded-2xl ${app.bg} border-2 border-white/30 ring-0 hover:ring-2 ${app.ring} transition-all p-4 flex flex-col gap-3 shadow-md hover:shadow-xl hover:-translate-y-0.5 overflow-hidden ${outOfStock ? "opacity-60" : ""}`}
     >
       <div className={`absolute -right-8 -top-8 w-24 h-24 rounded-full ${glow}/40 blur-2xl`} />
-      <div className="relative flex items-start justify-between">
+      <div className="relative flex items-start justify-between gap-1.5">
         <div className="group-hover:scale-105 transition-transform">
           <AppIcon app={app} />
         </div>
-        {app.variants.length > 1 && <Badge className={`${badgeCls} shadow-sm`}>{app.variants.length} pilihan</Badge>}
+        <div className="flex flex-col items-end gap-1">
+          {app.variants.length > 1 && <Badge className={`${badgeCls} shadow-sm`}>{app.variants.length} pilihan</Badge>}
+          {outOfStock ? (
+            <Badge className="bg-rose-500 text-white shadow-sm">Stok habis</Badge>
+          ) : (
+            isTracked && <Badge className="bg-emerald-500 text-white shadow-sm">Stok {totalStock}</Badge>
+          )}
+        </div>
       </div>
       <div className="relative">
         <p className={`font-bold text-[15px] leading-tight ${title}`} style={{ fontFamily: "'Baloo 2', sans-serif" }}>{app.name}</p>
@@ -258,6 +183,31 @@ export default function PrembymellApp() {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  const [stockMap, setStockMap] = useState({});
+
+  useEffect(() => {
+    async function loadStock() {
+      try {
+        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/get-stock`, {
+          headers: {
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          },
+        });
+        const data = await res.json();
+        if (data.stock) {
+          const map = {};
+          data.stock.forEach((s) => {
+            map[stockKey(s.app_id, s.variant_label)] = s.stock_qty;
+          });
+          setStockMap(map);
+        }
+      } catch {
+        // Kalau gagal ambil stok (misal lagi offline), biarin semua tampil kayak biasa (gak dilacak)
+      }
+    }
+    loadStock();
+  }, []);
 
   const filteredApps = useMemo(() => {
     const byCategory = category === "Semua" ? APPS : APPS.filter((a) => a.cat === category);
@@ -519,7 +469,7 @@ export default function PrembymellApp() {
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   {filteredApps.map((app) => (
-                    <AppCard key={app.id} app={app} onOpen={openApp} />
+                    <AppCard key={app.id} app={app} onOpen={openApp} stockMap={stockMap} />
                   ))}
                 </div>
               )}
@@ -541,19 +491,30 @@ export default function PrembymellApp() {
               <p className="text-stone-700 font-bold text-sm" style={{ fontFamily: "'Baloo 2', sans-serif" }}>Pilih Paket</p>
               {activeApp.variants.map((v, i) => {
                 const active = i === activeVariantIdx;
+                const qty = stockMap[stockKey(activeApp.id, v.label)];
+                const isTracked = qty !== undefined;
+                const soldOut = isTracked && qty <= 0;
                 return (
                   <button
                     key={v.label}
-                    onClick={() => setActiveVariantIdx(i)}
+                    onClick={() => !soldOut && setActiveVariantIdx(i)}
+                    disabled={soldOut}
                     className={`flex items-center justify-between rounded-xl px-4 py-3 border-2 transition-colors ${
-                      active ? "bg-pink-50 border-pink-400" : "bg-white border-orange-100"
+                      soldOut ? "bg-stone-50 border-stone-100 opacity-60" : active ? "bg-pink-50 border-pink-400" : "bg-white border-orange-100"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${active ? "bg-pink-500 border-pink-500" : "border-stone-300"}`}>
-                        {active && <Check className="w-3 h-3 text-white" />}
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${active && !soldOut ? "bg-pink-500 border-pink-500" : "border-stone-300"}`}>
+                        {active && !soldOut && <Check className="w-3 h-3 text-white" />}
                       </div>
-                      <p className="text-stone-800 text-sm font-semibold text-left">{v.label}</p>
+                      <div className="text-left">
+                        <p className="text-stone-800 text-sm font-semibold">{v.label}</p>
+                        {isTracked && (
+                          <p className={`text-[11px] font-medium ${soldOut ? "text-rose-500" : "text-emerald-600"}`}>
+                            {soldOut ? "Stok habis" : `Sisa stok: ${qty}`}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <p className="text-stone-800 text-sm font-bold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{rupiah(v.price)}</p>
                   </button>
@@ -668,14 +629,20 @@ export default function PrembymellApp() {
 
         {/* Bottom bar */}
         <div className="fixed bottom-0 w-full max-w-sm px-4 pb-4 pt-3 bg-gradient-to-t from-orange-50 via-orange-50 to-transparent">
-          {view === "detail" && activeApp && (
-            <button
-              onClick={() => addToCart(activeApp, activeApp.variants[activeVariantIdx])}
-              className="w-full bg-pink-500 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-md shadow-pink-200"
-            >
-              <Plus className="w-4 h-4" /> Tambah ke Keranjang
-            </button>
-          )}
+          {view === "detail" && activeApp && (() => {
+            const activeVariant = activeApp.variants[activeVariantIdx];
+            const qty = stockMap[stockKey(activeApp.id, activeVariant.label)];
+            const soldOut = qty !== undefined && qty <= 0;
+            return (
+              <button
+                onClick={() => addToCart(activeApp, activeVariant)}
+                disabled={soldOut}
+                className="w-full bg-pink-500 disabled:opacity-50 disabled:bg-stone-400 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-md shadow-pink-200"
+              >
+                <Plus className="w-4 h-4" /> {soldOut ? "Stok Habis" : "Tambah ke Keranjang"}
+              </button>
+            );
+          })()}
           {view === "cart" && cart.length > 0 && (
             <button
               onClick={handleCheckout}
