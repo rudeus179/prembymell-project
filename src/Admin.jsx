@@ -19,6 +19,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+import { APPS } from "./appsData";
+
 const SUPABASE_FUNCTIONS_URL = "https://bcuupxqrbczhmhmrwrzv.functions.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_r_CYjAY3OvGaWtXE6B1eWA_xja80Mll";
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
@@ -337,7 +339,11 @@ function StockTab({ password }) {
   const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ app_id: "", variant_label: "", stock_qty: "" });
+  const [selectedAppId, setSelectedAppId] = useState(APPS[0]?.id || "");
+  const [selectedVariantLabel, setSelectedVariantLabel] = useState(APPS[0]?.variants[0]?.label || "");
+  const [qty, setQty] = useState("");
+
+  const selectedApp = APPS.find((a) => a.id === selectedAppId);
 
   async function load() {
     setLoading(true);
@@ -350,12 +356,19 @@ function StockTab({ password }) {
   }
   useEffect(() => { load(); }, []);
 
+  function onAppChange(appId) {
+    setSelectedAppId(appId);
+    const app = APPS.find((a) => a.id === appId);
+    setSelectedVariantLabel(app?.variants[0]?.label || "");
+  }
+
   async function save(e) {
     e.preventDefault();
+    if (!selectedAppId || !selectedVariantLabel) return;
     setSaving(true);
     try {
-      await callAdmin(password, "upsert_stock", { app_id: form.app_id, variant_label: form.variant_label, stock_qty: Number(form.stock_qty) });
-      setForm({ app_id: "", variant_label: "", stock_qty: "" });
+      await callAdmin(password, "upsert_stock", { app_id: selectedAppId, variant_label: selectedVariantLabel, stock_qty: Number(qty) });
+      setQty("");
       await load();
     } finally {
       setSaving(false);
@@ -363,6 +376,7 @@ function StockTab({ password }) {
   }
 
   const inputCls = "bg-stone-900 text-white text-xs rounded-lg px-3 py-2.5 border border-stone-700 focus:outline-none focus:ring-2 focus:ring-pink-500 placeholder:text-stone-500";
+  const selectCls = "bg-stone-900 text-white text-xs rounded-lg px-3 py-2.5 border border-stone-700 focus:outline-none focus:ring-2 focus:ring-pink-500 appearance-none";
 
   return (
     <div className="flex flex-col gap-3">
@@ -370,9 +384,17 @@ function StockTab({ password }) {
         <p className="text-white text-xs font-bold flex items-center gap-1.5">
           <Boxes className="w-4 h-4 text-pink-400" /> Set / update batas stok
         </p>
-        <input required value={form.app_id} onChange={(e) => setForm({ ...form, app_id: e.target.value })} placeholder="app_id, misal: netflix" className={inputCls} />
-        <input required value={form.variant_label} onChange={(e) => setForm({ ...form, variant_label: e.target.value })} placeholder="variant_label, misal: Privat - 1 Bulan" className={inputCls} />
-        <input required type="number" value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: e.target.value })} placeholder="Jumlah stok" className={inputCls} />
+        <select value={selectedAppId} onChange={(e) => onAppChange(e.target.value)} className={selectCls}>
+          {APPS.map((a) => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
+        <select value={selectedVariantLabel} onChange={(e) => setSelectedVariantLabel(e.target.value)} className={selectCls}>
+          {selectedApp?.variants.map((v) => (
+            <option key={v.label} value={v.label}>{v.label}</option>
+          ))}
+        </select>
+        <input required type="number" min="0" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Jumlah stok" className={inputCls} />
         <button disabled={saving} className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-500 to-fuchsia-600 disabled:opacity-60 text-white text-xs font-bold py-2.5 rounded-lg transition">
           {saving ? <Spinner className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
           Simpan
@@ -384,14 +406,17 @@ function StockTab({ password }) {
       {!loading && stock.length === 0 && <EmptyState icon={Boxes} text="Belum ada data stok" />}
 
       <div className="flex flex-col gap-2">
-        {stock.map((s) => (
-          <div key={s.id} className="bg-stone-800/70 border border-stone-700/60 rounded-xl p-3.5 flex justify-between items-center text-sm text-white">
-            <span className="text-stone-200">{s.app_id} <span className="text-stone-600">·</span> {s.variant_label}</span>
-            <span className={`font-mono font-bold px-2.5 py-1 rounded-lg text-xs ${s.stock_qty > 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"}`}>
-              {s.stock_qty}
-            </span>
-          </div>
-        ))}
+        {stock.map((s) => {
+          const appName = APPS.find((a) => a.id === s.app_id)?.name || s.app_id;
+          return (
+            <div key={s.id} className="bg-stone-800/70 border border-stone-700/60 rounded-xl p-3.5 flex justify-between items-center text-sm text-white">
+              <span className="text-stone-200">{appName} <span className="text-stone-600">·</span> {s.variant_label}</span>
+              <span className={`font-mono font-bold px-2.5 py-1 rounded-lg text-xs ${s.stock_qty > 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"}`}>
+                {s.stock_qty}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
