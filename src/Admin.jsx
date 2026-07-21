@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 
 import { APPS } from "./appsData";
+import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 
 const SUPABASE_FUNCTIONS_URL = "https://bcuupxqrbczhmhmrwrzv.functions.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_r_CYjAY3OvGaWtXE6B1eWA_xja80Mll";
@@ -97,7 +99,7 @@ function RefreshButton({ onClick, loading }) {
 
 /* ---------- login ---------- */
 
-function LoginGate({ onSuccess }) {
+function LoginGate({ onSuccess, onCancel }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -156,6 +158,15 @@ function LoginGate({ onSuccess }) {
           {loading && <Spinner className="w-4 h-4" />}
           {loading ? "Memeriksa..." : "Masuk"}
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-stone-500 hover:text-white text-xs font-medium -mt-2 transition-colors"
+          >
+            Batal, kembali ke toko
+          </button>
+        )}
       </form>
     </div>
   );
@@ -534,11 +545,28 @@ const TABS = [
   { id: "credentials", label: "Kredensial", Icon: KeyRound },
 ];
 
-export default function AdminApp() {
+export default function AdminApp({ onExit }) {
   const [password, setPassword] = useState(() => sessionStorage.getItem(PW_STORAGE_KEY) || "");
   const [tab, setTab] = useState("orders");
 
-  if (!password) return <LoginGate onSuccess={setPassword} />;
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let listenerHandle;
+    CapacitorApp.addListener("backButton", () => {
+      if (onExit) {
+        onExit();
+      } else {
+        CapacitorApp.exitApp();
+      }
+    }).then((handle) => {
+      listenerHandle = handle;
+    });
+    return () => {
+      listenerHandle?.remove();
+    };
+  }, [onExit]);
+
+  if (!password) return <LoginGate onSuccess={setPassword} onCancel={onExit} />;
 
   function logout() {
     sessionStorage.removeItem(PW_STORAGE_KEY);
@@ -555,12 +583,22 @@ export default function AdminApp() {
             </div>
             <p className="text-white font-bold">Admin Prembymell</p>
           </div>
-          <button
-            onClick={logout}
-            className="flex items-center gap-1.5 text-xs font-semibold text-stone-500 hover:text-rose-400 transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" /> Keluar
-          </button>
+          <div className="flex items-center gap-3">
+            {onExit && (
+              <button
+                onClick={onExit}
+                className="flex items-center gap-1.5 text-xs font-semibold text-stone-500 hover:text-white transition-colors"
+              >
+                Kembali ke Toko
+              </button>
+            )}
+            <button
+              onClick={logout}
+              className="flex items-center gap-1.5 text-xs font-semibold text-stone-500 hover:text-rose-400 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Keluar
+            </button>
+          </div>
         </div>
         <div className="flex gap-2">
           {TABS.map(({ id, label, Icon }) => (
