@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, ShoppingCart, Plus, Minus, Check, MessageCircle, Home, X, Sparkles, Trash2, Search, History, PackageCheck, Clock, XCircle, Copy } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Plus, Minus, Check, MessageCircle, Home, X, Sparkles, Trash2, Search, History, PackageCheck, Clock, XCircle, Copy, Lock } from "lucide-react";
 import qrisImage from "./assets/qris.jpg";
 import { APPS, CATEGORIES } from "./appsData";
 import { Capacitor } from "@capacitor/core";
@@ -168,7 +168,7 @@ function OrderCard({ order }) {
   );
 }
 
-export default function PrembymellApp() {
+export default function PrembymellApp({ onOpenAdmin }) {
   const [view, setView] = useState("home");
   const [category, setCategory] = useState("Semua");
   const [search, setSearch] = useState("");
@@ -437,6 +437,9 @@ export default function PrembymellApp() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={onOpenAdmin} className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-stone-400 hover:text-stone-700">
+              <Lock className="w-3.5 h-3.5" />
+            </button>
             <button onClick={openOrders} className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-stone-600">
               <History className="w-4 h-4" />
             </button>
